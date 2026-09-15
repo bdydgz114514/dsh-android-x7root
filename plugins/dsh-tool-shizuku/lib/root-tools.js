@@ -218,12 +218,78 @@ export function registerRootTools(ctx) {
   }));
 
   // ---------------- android_optimize_keepalive ----------------
+/**
+ * 从 getprop/dumpsys 输出识别厂商 ROM，返回该 ROM 仍需用户手动确认的后台保活开关。
+ * AOSP 层面能做的（Doze 白名单 / appops / 待机桶）已由本工具完成，厂商私有开关无法代开。
+ */
+function detectOem(raw) {
+  const t = String(raw || "").toLowerCase();
+  const hit = (...keys) => keys.some((k) => t.includes(k));
+  if (hit("xiaomi", "redmi", "poco", "miui", "hyperos")) {
+    return { name: "MIUI / HyperOS", steps: [
+      "仍需手动确认（MIUI / HyperOS）：",
+      "1) 设置 → 应用设置 → 应用管理 → DeepSeek Harness → 省电策略：无限制",
+      "2) 同页 → 权限管理 → 自启动：允许",
+      "3) 设置 → 应用设置 → 授权管理 → 自启动管理：允许本应用",
+      "4) 设置 → 省电与电池 → 应用智能省电 → 本应用：无限制",
+      "5) 最近任务 → 长按本应用卡片 → 加锁",
+      ""
+    ].join("\n") };
+  }
+  if (hit("oppo", "realme", "oneplus", "oplus", "coloros")) {
+    return { name: "ColorOS / realme UI / OnePlus", steps: [
+      "仍需手动确认（ColorOS 系）：",
+      "1) 设置 → 应用 → 应用管理 → DeepSeek Harness → 耗电管理：允许后台活动 / 允许自启动 / 允许关联启动",
+      "2) 设置 → 电池 → 更多设置：关闭「智能省电」对本应用的优化",
+      "3) 最近任务里下拉本应用卡片 → 加锁（防止一键清理）",
+      ""
+    ].join("\n") };
+  }
+  if (hit("huawei", "honor", "emui", "harmony")) {
+    return { name: "EMUI / HarmonyOS / MagicOS", steps: [
+      "仍需手动确认（EMUI / HarmonyOS）：",
+      "1) 设置 → 应用 → 应用启动管理 → DeepSeek Harness：关闭「自动管理」，勾选 允许自启动 / 允许关联启动 / 允许后台活动",
+      "2) i 管家/手机管家 → 应用启动管理：同样放行本应用",
+      "3) 最近任务 → 下拉本应用卡片加锁",
+      ""
+    ].join("\n") };
+  }
+  if (hit("samsung")) {
+    return { name: "One UI", steps: [
+      "仍需手动确认（One UI）：",
+      "1) 设置 → 电池 → 后台使用限制 → 从「休眠应用」中排除本应用",
+      "2) 设置 → 应用 → DeepSeek Harness → 电池 → 不受限制",
+      ""
+    ].join("\n") };
+  }
+  if (hit("vivo", "iqoo")) {
+    return { name: "OriginOS / Funtouch", steps: [
+      "仍需手动确认（vivo 系）：",
+      "1) 设置 → 电池 → 后台高耗电 → 允许本应用后台运行",
+      "2) i 管家 → 自启动管理 → 允许本应用自启动与关联启动",
+      "3) 最近任务 → 下拉卡片加锁",
+      ""
+    ].join("\n") };
+  }
+  if (hit("meizu", "flyme")) {
+    return { name: "Flyme", steps: [
+      "仍需手动确认（Flyme）：",
+      "1) 手机管家 → 权限管理 → 后台管理 → 允许本应用后台运行",
+      "2) 设置 → 应用管理 → 本应用 → 自启动：允许",
+      ""
+    ].join("\n") };
+  }
+  return { name: "通用 Android", steps:
+    "未识别到特定厂商 ROM：AOSP 层面加固已完成。若仍被系统清理，请在 设置 → 应用 → 电池 中把本应用设为「不受限制」，并在最近任务中加锁。\n" };
+}
+
   ctx.tools.register(defineTool({
     name: "android_optimize_keepalive",
     description:
-      "Oppo/ColorOS 后台保活加固（需要 root）：把本应用（以及可选的 Shizuku）加入 Doze 白名单、" +
-      "放开后台运行 appop、设为活跃待机桶，降低锁屏/切后台后被 ColorOS 冻结或杀掉导致 AI 任务中断的概率。" +
-      "执行后返回每条命令的结果；ColorOS 仍有个别开关（自启动/关联启动/省电策略）需要在系统设置里手动确认。",
+      "后台保活加固（需要 root，适用于各厂商 ROM）：自动识别 MIUI/HyperOS、ColorOS/realme、EMUI/HarmonyOS、" +
+      "OneUI、OriginOS/Funtouch、Flyme 等，把本应用（以及可选的 Shizuku）加入 Doze 白名单、" +
+      "放开后台运行 appop、设为活跃待机桶，降低锁屏/切后台后被厂商 ROM 冻结或杀掉导致 AI 任务中断的概率。" +
+      "执行后返回每条命令的结果，并给出该 ROM 仍需要在系统设置里手动确认的开关清单。",
     parameters: {
       package_name: { type: "string", description: "要加固的包名，默认本应用（com.deepseek.harness）。" },
       include_shizuku: { type: "boolean", description: "是否同时加固 Shizuku（moe.shizuku.privileged.api），默认 true。" }
@@ -248,6 +314,9 @@ export function registerRootTools(ctx) {
       if (args.include_shizuku !== false) targets.push("moe.shizuku.privileged.api");
 
       const lines = [];
+      // 先识别厂商 ROM，便于给出对应的手动开关清单
+      lines.push("echo '### OEM'");
+      lines.push("getprop ro.product.brand; getprop ro.product.manufacturer; getprop ro.miui.ui.version.name; getprop ro.build.version.oplusrom; getprop ro.build.version.emui; getprop ro.vivo.os.version; getprop ro.build.display.id");
       for (const p of targets) {
         lines.push("echo '### " + p + "'");
         lines.push("dumpsys deviceidle whitelist +" + p + " 2>&1");
@@ -261,14 +330,11 @@ export function registerRootTools(ctx) {
 
       const r = await rootExec(lines.join("\n"), 120000);
       const report = (r.stdout || "") + (r.stderr ? "\n[stderr]\n" + r.stderr : "");
+      const oem = detectOem(report);
       return {
         ok: true,
         report:
-          "后台保活加固结果：\n\n" + report +
-          "\n\n仍需在 ColorOS 设置里手动确认：\n" +
-          "1) 设置 → 应用 → 应用管理 → DeepSeek Harness → 耗电管理：允许后台活动 / 允许自启动 / 允许关联启动\n" +
-          "2) 设置 → 电池 → 更多设置：关闭「智能省电」对本应用的优化\n" +
-          "3) 最近任务里下拉本应用卡片 → 加锁（防止一键清理）\n"
+          "后台保活加固结果（识别系统：" + oem.name + "）：\n\n" + report + "\n\n" + oem.steps
       };
     }
   }));

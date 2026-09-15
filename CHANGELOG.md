@@ -2,6 +2,12 @@
 
 > 上游基线的变更见 @CHANGES.md@。
 
+## 1.7.5-x7root.7 (versionCode 115) — OEM 保活自动识别 + 插件文件补全
+- `android_optimize_keepalive` 不再只针对 ColorOS：新增厂商 ROM 识别
+  （MIUI/HyperOS、ColorOS/realme/OnePlus、EMUI/HarmonyOS/MagicOS、One UI、OriginOS/Funtouch、Flyme、通用 Android），
+  返回该 ROM 对应的手动开关清单（自启动、省电策略、后台限制、最近任务加锁等）。
+- 修复开源仓库中 `dsh-tool-shizuku` 缺失 `root-shell.js` / `root-tools.js` 的问题（否则插件加载即失败）。
+
 ## 1.7.5-x7root.6 (versionCode 114) — 兼容性修补
 - 兼容性审计与修补，详见 @docs/兼容性与机型适配.md@：
   - su 候选路径补充 APatch（@@/data/adb/ap/bin/su@ 等@）；
