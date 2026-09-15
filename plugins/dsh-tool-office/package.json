@@ -1,0 +1,27 @@
+{
+  "name": "@deepseek-ai/dsh-tool-office",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "dsh": {
+    "plugin": true
+  },
+  "dependencies": {
+    "mammoth": "^1.12.3",
+    "docx": "^9.7.1",
+    "exceljs": "^4.4.0",
+    "pptxgenjs": "^4.0.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
+    "jszip": "^3.10.2",
+    "fast-xml-parser": "^5.11.1"
+  }
+}

@@ -1,0 +1,28 @@
+# 二进制与密钥（不进入仓库）
+*.apk
+*.tar.aa
+*.tar.ab
+*.tar.ac
+*.tar.ad
+android-app/release.jks
+android-app/sdk/android.jar
+android-app/staging/
+android-app/out/
+android-app/assets/
+.credentials.yaml
+payload.zip
+
+# 本分支补充
+*.jks
+*.keystore
+*.p12
+*.pem
+# 注意：dsh-patches/overlay 里的 *node_modules* 是补丁源文件，必须提交，不能整体忽略
+/dshroot/
+/dshhome/
+/knowledge/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
