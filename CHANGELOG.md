@@ -2,6 +2,22 @@
 
 > 上游基线的变更见 @CHANGES.md@。
 
+## 1.7.5-x7root.8 (versionCode 116) — 内核升级到 0.1.6-alpha.2
+- **内核从 `0.1.5-rc.2` 升级到 `0.1.6-alpha.2`**（依赖树 83 个包；新增
+  `dsh-hmr` / `dsh-plugin-manager` / `dsh-atomic-write` / `dsh-mcp-resources` / `dsh-workflow-ptc` 等）。
+- **Android 源码补丁按新内核重新移植**（不再直接套用 0.1.0-rc.6 时代的旧文件），
+  见 @dsh-patches/README.md@：
+  - `dsh-subprocess-local`：node-pty → `spawnPtyCompat`（child_process 模拟）；
+    `@deepseek-ai/dsh-win32-process` 改为按需 `createRequire` 加载（koffi 原生绑定在 Android 不可用）。
+  - `dsh-attachment-local`：sharp/libvips → 纯 JS 图片头解析（PNG/JPEG/WEBP/GIF）；
+    图片规范化改为字节透传；`link()` → 独占复制回退；目录 fsync 在 EACCES/EPERM 时降级为 best-effort。
+  - `dsh-bash-local`：补回 `sandboxMode` getter（原生沙箱已禁用）。
+  - `dsh-session-persistence-jsonl`：硬链接 → `rename()` / 独占复制（Android SELinux 禁 `link()`）。
+- 内核包体积治理：剔除 Windows 专用原生包（`libreoffice-kit-win32-x64` 325 MB、`@img/sharp-*`、
+  `node-pty` 预编译产物）与开发期文件（`*.map` / `*.d.ts` / docs，约 236 MB），
+  否则打包会因体积超限失败。
+- `ptc-runtime` 在 Android 上等待已禁用的 `sandbox` 服务，启动时有一条 pending 告警（不影响使用）。
+
 ## 1.7.5-x7root.7 (versionCode 115) — OEM 保活自动识别 + 插件文件补全
 - `android_optimize_keepalive` 不再只针对 ColorOS：新增厂商 ROM 识别
   （MIUI/HyperOS、ColorOS/realme/OnePlus、EMUI/HarmonyOS/MagicOS、One UI、OriginOS/Funtouch、Flyme、通用 Android），

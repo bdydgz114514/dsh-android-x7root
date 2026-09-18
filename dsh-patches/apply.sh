@@ -26,16 +26,36 @@ echo "== 应用补丁 overlay -> dshroot =="
 export LD_LIBRARY_PATH="$RUNTIME/lib"
 export DSHROOT_PKG="$DST/node_modules/@deepseek-ai/dsh/package.json"
 
-echo "== 把 Shizuku 插件加入 dsh package.json 依赖（幂等）=="
+echo "== 内核版本比对（overlay 内文件是按新内核源码移植的，套错版本会回退上游代码）=="
+if [ -f "$DSHROOT_PKG" ]; then
+  KERNEL_VER="$("$NODE" -e 'console.log(require(process.env.DSHROOT_PKG).version)' 2>/dev/null || true)"
+  echo "  当前 dshroot 内核版本: ${KERNEL_VER:-未知}"
+  echo "  注意: overlay 内的 dsh-subprocess-local / dsh-attachment-local / dsh-bash-local /"
+  echo "        dsh-session-persistence-jsonl 是针对 @deepseek-ai/dsh@0.1.6-alpha.2 源码用同名包版本移植的；"
+  echo "        若上游小版本有改动，请先按 dsh-patches/README.md 的流程重新移植，再应用本脚本。"
+fi
+
+echo "== 把定制插件加入 dsh package.json 依赖（幂等）=="
 "$NODE" -e '
 const fs = require("fs");
 const p = process.env.DSHROOT_PKG;
 const m = JSON.parse(fs.readFileSync(p, "utf8"));
 m.dependencies = m.dependencies || {};
-if (!m.dependencies["@deepseek-ai/dsh-tool-shizuku"]) {
-  m.dependencies["@deepseek-ai/dsh-tool-shizuku"] = "0.1.0";
+const plugs = [
+  "@deepseek-ai/dsh-tool-shizuku",
+  "@deepseek-ai/dsh-tool-android",
+  "@deepseek-ai/dsh-tool-accessibility",
+  "@deepseek-ai/dsh-tool-office",
+  "@deepseek-ai/dsh-tool-knowledge",
+  "@deepseek-ai/dsh-client-ui-settings-custom"
+];
+const added = [];
+for (const name of plugs) {
+  if (!m.dependencies[name]) { m.dependencies[name] = "0.1.0"; added.push(name); }
+}
+if (added.length) {
   fs.writeFileSync(p, JSON.stringify(m, null, 2) + "\n");
-  console.log("  已添加 @deepseek-ai/dsh-tool-shizuku 依赖");
+  console.log("  已添加依赖: " + added.join(", "));
 } else {
   console.log("  依赖已存在，跳过");
 }

@@ -40,23 +40,40 @@ DSH 有 4 处需要适配 Android 的源码改动，更新 DSH 后需重新应�
 
 | 补丁 | 原因 | 改动 |
 |---|---|---|
-| dsh-subprocess-local | node-pty 原生模块 Android 无法编译 | 用 child_process 模拟 |
-| dsh-attachment-local | sharp 原生模块 + Android 禁硬链接 | 纯 JS 头解析 + link→rename |
+| dsh-subprocess-local | node-pty 原生模块 Android 无法编译；koffi（dsh-win32-process）同样不可用 | node-pty → `spawnPtyCompat`（child_process 模拟）；win32-process 改按需 `createRequire` |
+| dsh-attachment-local | sharp/libvips 原生模块不存在；Android 禁硬链接；目录 fsync 可能 EACCES | 纯 JS 头解析（PNG/JPEG/WEBP/GIF）；规范化字节透传；`link()` → 独占复制；fsync best-effort |
 | dsh-bash-local | 原生沙箱禁用后需兼容 | 补 sandboxMode getter |
-| dsh-session-persistence-jsonl | Android SELinux 禁硬链接 | link→rename |
+| dsh-session-persistence-jsonl | Android SELinux 禁硬链接 | `link()` → `rename()` / 独占复制 |
+
+> **overlay 里的文件是「整份文件」覆盖，不是 diff。** 因此**内核大版本升级后必须重新移植**：
+> 先取新版本包的原始文件（`npm pack @deepseek-ai/<包>@<版本>`），
+> 与旧 overlay 做 `git diff --no-index` 得到「Android 改动」，
+> 再把同样的改动应用到新版本源码上——直接套用旧 overlay 会把上游新功能回退掉。
+> 0.1.5-rc.2 → 0.1.6-alpha.2 就是这么做的（新增了 `createLazyRequire` 惰性加载体系，
+> 所以 node-pty / sharp 的顶层 import 不再需要 shim）。
 
 ## 如何升级 DSH 版本
 
 ```sh
-# 1. 更新 DSH 包（开发环境，需 npm）
-source $DEV_HOME/runtime/env.sh
-cd $DEV_HOME/dshroot/lib/node_modules/@deepseek-ai/dsh
-npm install @deepseek-ai/dsh@latest
+# 1. 安装新内核（开发环境，Windows 上可用 npm）
+mkdir -p /tmp/kc && cd /tmp/kc
+npm install --no-audit --no-fund @deepseek-ai/dsh@<新版本>
+#    然后把 node_modules 整理成 pnpm 风格的两层布局：
+#      <devhome>/dshroot/lib/node_modules/@deepseek-ai/dsh/            ← 内核包本体
+#      <devhome>/dshroot/lib/node_modules/@deepseek-ai/dsh/node_modules/  ← 全部依赖（含 @deepseek-ai/*）
 
-# 2. 重新应用 Android 源码补丁（带语法自检，源码变了会报错提醒）
-sh dsh-patches/apply.sh
+# 2. 把 Android 补丁移植到新内核源码（见上面「必须重新移植」）
+node upgrade/k016-win/test-port-016.mjs   # 34 项移植自检
 
-# 3. 重新打包 APK（会自动注入 mobile-patch 移动端适配）
+# 3. 内嵌插件逐个装依赖（插件依赖装在插件自己的 node_modules 里）
+cd <devhome>/dshroot/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/<插件>
+npm install --omit=dev --legacy-peer-deps
+
+# 4. 剔除平台不匹配的原生包与开发期文件（否则 APK 体积失控）
+#    libreoffice-kit-win32-x64 / @img/sharp-* / node-pty / @vscode/ripgrep
+#    *.map *.d.ts docs tests（约 236 MB）
+
+# 5. 重新打包 APK（会自动注入 mobile-patch 移动端适配）
 cd android-app && bash build.sh
 ```
 

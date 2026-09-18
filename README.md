@@ -1,17 +1,17 @@
 # DeepSeek Harness 安卓定制版（X7Root）
 
 把 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）跑在 Android 手机上的**增强分支**：
-升级到 0.1.5-rc.2 内核，内置 Office 文档处理、无障碍触控、知识库与文件上传，并把 App 自有设置**并入 DSH 自带设置界面**。
+升级到 0.1.6-alpha.2 内核，内置 Office 文档处理、无障碍触控、知识库与文件上传，并把 App 自有设置**并入 DSH 自带设置界面**。
 
 > 上游项目：[woaiys3/deepseek-harness-android-app](https://github.com/woaiys3/deepseek-harness-android-app)（MIT）
-> 内核：`@deepseek-ai/dsh@0.1.5-rc.2`
-> 本分支：`1.7.5-x7root.6`（versionCode 114）
+> 内核：`@deepseek-ai/dsh@0.1.6-alpha.2`
+> 本分支：`1.7.5-x7root.8`（versionCode 116）
 
 ## 特性
 
 | 能力 | 说明 |
 |---|---|
-| 内核升级 | 0.1.5-rc.2，含 Android 端可移植性补丁（见 `patches/patch-015.mjs`） |
+| 内核升级 | 0.1.6-alpha.2，含 Android 端可移植性补丁（见 `dsh-patches/`；`patches/patch-015.mjs` 是 0.1.5-rc.2 时代的移植记录） |
 | 运行模式 | **有 root / 无 root** 一键切换（设置里切换，重启引擎生效） |
 | 知识库 | 自动把每轮排障经验入库；SQLite FTS5 全文检索；存放在外部存储，**更新/重装不丢** |
 | Office | 内置 `office_read/write/edit/info/convert`，支持 docx/xlsx/pptx/pdf 等，全部本地库实现 |
@@ -33,7 +33,7 @@
 仓库不含任何二进制（node 运行时、内核 payload、签名密钥）。完整构建需要：
 
 1. 上游仓库：`git clone https://github.com/woaiys3/deepseek-harness-android-app`
-2. DSH 内核 `@deepseek-ai/dsh@0.1.5-rc.2` 及其依赖闭包
+2. DSH 内核 `@deepseek-ai/dsh@0.1.6-alpha.2` 及其依赖闭包
 3. Android SDK：`android.jar` (API 34)、`aapt`、`d8`、`zipalign`、`apksigner`
 4. 你自己的签名密钥（**仓库不提供**，请勿使用他人密钥）：
    ```bash
@@ -81,7 +81,7 @@ docs/                        各版本更新说明、开发指南、兼容性分
 
 ## English summary
 
-A customized Android build of DeepSeek Harness (kernel `0.1.5-rc.2`), forked from
+A customized Android build of DeepSeek Harness (kernel `0.1.6-alpha.2`), forked from
 [woaiys3/deepseek-harness-android-app](https://github.com/woaiys3/deepseek-harness-android-app) (MIT).
 Adds: root/no-root run modes, an auto-curated knowledge base (SQLite FTS5), on-device Office document
 tools, accessibility-based touch simulation, native file upload, and an app settings page contributed as a
