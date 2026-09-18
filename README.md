@@ -20,6 +20,11 @@
 | 设置并入 UI | App 设置作为 **DSH 设置页的「定制」标签**，风格与原生一致；右上角不再有独立设置按钮 |
 | 无自动更新 | 启动不再联网检查版本，改为设置里手动检查 |
 
+> **真机实测**：v1.7.5-x7root.8（内核 0.1.6-alpha.2）已在
+> **vivo V2452A / Funtouch OS 16 / Android 16 / arm64-v8a** 上完成安装与运行验证
+> （引擎起来、界面渲染、移动端适配生效）；截图见 `docs/screenshots/x8-device-vivo-android16.png`，
+> 明细见 `docs/验证记录.md`。
+
 ## 安装
 
 1. 到 [Releases](../../releases) 下载 `DeepSeekHarness-X7Root-v*.apk`。

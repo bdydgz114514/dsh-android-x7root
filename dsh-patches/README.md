@@ -10,6 +10,7 @@ dsh-patches/
 ├── apply.sh               重新应用源码补丁（带语法自检）
 └── overlay/               改好后的源码文件
     └── lib/node_modules/@deepseek-ai/dsh/node_modules/
+        ├── dsh-app-boot/                 内部模块加载（0.1.6 起必需：绕开无 android 构建的原生插件）
         ├── dsh-subprocess-local/          子进程模拟（适配 Android）
         ├── dsh-attachment-local/          附件处理（适配 Android）
         ├── dsh-bash-local/                bash 沙箱兼容
@@ -36,10 +37,11 @@ APK (com.deepseek.harness)
 
 ## Android 源码补丁
 
-DSH 有 4 处需要适配 Android 的源码改动，更新 DSH 后需重新应用：
+DSH 有 5 处需要适配 Android 的源码改动，更新 DSH 后需重新应用：
 
 | 补丁 | 原因 | 改动 |
 |---|---|---|
+| dsh-app-boot | **0.1.6 起**内核用 `node-addon-require-builtin` 加载 Node 内部模块，而该包**没有 android-arm64 构建**（可选包只有 darwin / linux-glibc / win32），加载期即抛 "No usable native binding found …-android-arm64"，引擎根本起不来 | `internalModules()` 改为**优先用 `--expose-internals` 直接 require 内部模块**（应用本来就带这个参数，等价可用），原生插件退化为兜底 |
 | dsh-subprocess-local | node-pty 原生模块 Android 无法编译；koffi（dsh-win32-process）同样不可用 | node-pty → `spawnPtyCompat`（child_process 模拟）；win32-process 改按需 `createRequire` |
 | dsh-attachment-local | sharp/libvips 原生模块不存在；Android 禁硬链接；目录 fsync 可能 EACCES | 纯 JS 头解析（PNG/JPEG/WEBP/GIF）；规范化字节透传；`link()` → 独占复制；fsync best-effort |
 | dsh-bash-local | 原生沙箱禁用后需兼容 | 补 sandboxMode getter |

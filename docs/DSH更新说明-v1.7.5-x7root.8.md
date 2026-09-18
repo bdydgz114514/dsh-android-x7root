@@ -3,7 +3,7 @@
 > 内核：`@deepseek-ai/dsh@0.1.6-alpha.2`（**从 0.1.5-rc.2 升级**）
 > 产物：`DeepSeekHarness-X7Root-v1.7.5-x7root.8.apk`
 > 包名 `com.deepseek.harness`　versionCode `116`　versionName `1.7.5-x7root.8`　targetSdk `28`
-> 大小 164,828,168 字节　SHA-256 `e508f83be4d50c26e7b1dfaab1cd09ddb4b182a4e62c87a3deaafa5d9c6abe09`
+> 大小 164,828,168 字节　SHA-256 `ccd4ae2cbb80037d1582cc7a28f747abefec46f46b192c4e77f4d0ccfc222a15`
 
 本版是**内核升级版**：把内嵌的 DSH 内核从 `0.1.5-rc.2` 换到 npm 上最新的 `0.1.6-alpha.2`，
 并把 4 个 Android 适配补丁按新内核源码**重新移植**（不是套用旧文件）。
@@ -39,9 +39,33 @@
 代价说明：**Office 文档转 PDF（`dsh-office-to-pdf`）在 Android 上不可用**（LibreOffice 无 Android/arm64 构建），
 调用时会返回 `unavailable`；Office 的读写/编辑/信息等能力不受影响。
 
-## 验证
+## 真机实测（vivo V2452A / Funtouch OS 16 / Android 16）
 
-设备未连接，本版采用**移植自检 + 本地成品校验 + 覆盖升级模拟**，未做真机运行时验证：
+在 **vivo V2452A（Android 16 / API 36 / arm64-v8a / WebView 138 / 无 root 无 Shizuku）** 上完成安装与运行验证：
+
+| 项 | 结果 |
+|---|---|
+| Android 16 上安装（targetSdk 28） | 通过 |
+| 首次启动解压 payload | 21,665 个内核文件，约 20 秒 |
+| 引擎进程 + 3080 服务 | 通过（无 token 401 / 带 token 303+Set-Cookie / 带 Cookie 200） |
+| WebView 渲染 DSH 界面 | 通过（截图见 `docs/screenshots/x8-device-vivo-android16.png`） |
+| 移动端适配 mobile.css/js | 均 200，引用已注入 |
+| 定制设置页客户端插件 | 已在前端 plugin 列表 |
+| 插件 import 失败 / crash.log | 无 |
+
+**真机测出并修复了 2 个启动阻塞**（这正是"没连真机"时看不出来的问题）：
+
+1. `node-addon-require-builtin@0.1.6` **没有 android-arm64 构建**（上游可选包只有 darwin / linux-glibc / win32），
+   内核加载期直接抛 `No usable native binding found for node-addon-require-builtin-android-arm64`，引擎起不来。
+   → 修复：`dsh-app-boot` 改为优先用 node 自带的 `--expose-internals` 直接 require 内部模块，原生插件退化为兜底。
+2. 0.1.6 新增**浏览器会话认证**：根路径无 token 返回 401，App 原来的健康探测与 WebView 都请求 `/`，
+   结果引擎已就绪却永远停在"正在启动…"。
+   → 修复：App 从引擎 stdout 捕获 `?token=`，用它做健康探测与首次 WebView 加载；
+   探测识别 **303 token 交换**即判定引擎存活（`HttpURLConnection` 不保存 Cookie，跟随后反而得 401）。
+
+**仍未验证**：端到端真实对话（本机未配置 API Key）。
+
+## 静态验证（本机可复现）
 
 | # | 验证项 | 方式 | 结果 |
 |---|---|---|---|

@@ -3,6 +3,17 @@
 > 上游基线的变更见 @CHANGES.md@。
 
 ## 1.7.5-x7root.8 (versionCode 116) — 内核升级到 0.1.6-alpha.2
+- **真机实测（vivo V2452A / Funtouch OS 16 / Android 16 / arm64-v8a）发现并修复 2 个启动阻塞**：
+  1. `node-addon-require-builtin@0.1.6` **没有 android-arm64 构建**（可选包只覆盖
+     darwin / linux-glibc / win32），`dsh-app-boot` 加载期即抛
+     "No usable native binding found for node-addon-require-builtin-android-arm64" → 引擎起不来。
+     修复：`dsh-app-boot` 的 `internalModules()` 改为**优先用 `--expose-internals` 直接 require
+     内部模块**（应用本来就带该参数），原生插件退化为兜底。
+  2. 0.1.6 新增**浏览器会话认证**：根路径无 token 返回 401
+     （"dsh web authentication required"）。App 的 `isDshEngine()` 探测与 WebView 都请求
+     `/`，导致健康检查永远失败、界面停在"正在启动…"。
+     修复：App 从引擎 stdout 捕获启动时打印的 `?token=`，用它做健康探测与首次 WebView 加载；
+     探测识别 **303 token 交换**即判定引擎存活（`HttpURLConnection` 不保存 Cookie，跟随重定向反而拿到 401）。
 - **内核从 `0.1.5-rc.2` 升级到 `0.1.6-alpha.2`**（依赖树 83 个包；新增
   `dsh-hmr` / `dsh-plugin-manager` / `dsh-atomic-write` / `dsh-mcp-resources` / `dsh-workflow-ptc` 等）。
 - **Android 源码补丁按新内核重新移植**（不再直接套用 0.1.0-rc.6 时代的旧文件），
