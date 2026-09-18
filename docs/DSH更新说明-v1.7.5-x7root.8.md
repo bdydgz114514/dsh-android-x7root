@@ -3,7 +3,7 @@
 > 内核：`@deepseek-ai/dsh@0.1.6-alpha.2`（**从 0.1.5-rc.2 升级**）
 > 产物：`DeepSeekHarness-X7Root-v1.7.5-x7root.8.apk`
 > 包名 `com.deepseek.harness`　versionCode `116`　versionName `1.7.5-x7root.8`　targetSdk `28`
-> 大小 164,832,264 字节　SHA-256 `16a3da4aad20590c5b96d656f725b1b0835970f89eb07387dd3bafb17fcaa9a5`
+> 大小 164,832,264 字节　SHA-256 `3e83064c4d0ea70776d399798f2d45f0b5460dde1234766e6de5be17eb688d46`
 
 本版是**内核升级版**：把内嵌的 DSH 内核从 `0.1.5-rc.2` 换到 npm 上最新的 `0.1.6-alpha.2`，
 并把 4 个 Android 适配补丁按新内核源码**重新移植**（不是套用旧文件）。
@@ -39,6 +39,21 @@
 代价说明：**Office 文档转 PDF（`dsh-office-to-pdf`）在 Android 上不可用**（LibreOffice 无 Android/arm64 构建），
 调用时会返回 `unavailable`；Office 的读写/编辑/信息等能力不受影响。
 
+### 第四轮真机：每轮对话报 `flock is not supported on android-arm64`
+
+会话写入要用 `flock(2)` 加排他锁，而 `@deepseek-ai/node-addon-system` **没有 bionic/Android 预编译包**
+（只发布了 linux glibc/musl、darwin、win32），所以每轮对话写会话日志时直接失败。
+
+真机探针实测：`platform=android-arm64 reportPlatform=android glibc=undefined 平台包可解析=false`。
+
+修复：`lib/flock.js` 的 `tryLockExclusive` 在 Android/bionic 上直接返回——引擎是单进程，
+进程内写声明已足够互斥（与上游浏览器 worker 的 stub 同一理由）。
+判定用的都是确定事实：① `reportPlatform == android`；② 该平台包无法解析；③ Linux 但无 glibc/musl 报告。
+守卫逻辑单测 **8/8 通过**（含真 glibc / musl / darwin / win32 的反例，确保 Linux 桌面不受影响）。
+
+> 附带修了一个工程问题：旧版目录里那份 flock 补丁**从未归档进 `dsh-patches/overlay`**，
+> 只存在于当时手改的那棵树上；这次内核升级重新铺文件后就被覆盖，问题才复现。
+> 现已归档进 overlay + `apply.sh` 自检清单（共 6 个 JS 补丁）。
 ### 第三轮真机：选工作区一闪就弹回 —— 真正原因是「会话建不出来」
 
 浏览器控制台原文：

@@ -3,6 +3,14 @@
 > 上游基线的变更见 @CHANGES.md@。
 
 ## 1.7.5-x7root.8 (versionCode 116) — 内核升级到 0.1.6-alpha.2
+- **修复「本轮运行失败：flock is not supported on android-arm64」**：会话写入要用 `flock(2)` 加排他锁，
+  而 `@deepseek-ai/node-addon-system` **没有 bionic/Android 预编译包**（只有 linux glibc/musl、darwin、win32），
+  于是每轮对话写会话日志时直接失败。
+  真机探针实测：`platform=android-arm64 reportPlatform=android glibc=undefined 平台包可解析=false`。
+  修复：`lib/flock.js` 的 `tryLockExclusive` 在 Android/bionic 上直接返回（引擎单进程，进程内写声明已足够；
+  与上游浏览器 worker 的 stub 同一理由）。判定不靠猜：先看打包约定（`reportPlatform == android`），
+  再看该平台包是否真的能解析，最后才用「Linux 但无 glibc/musl 报告」兜底。
+  > 注：**旧版本里那份 flock 补丁其实从未归档**——0.1.6 升级重新铺内核时被原始文件覆盖，问题才复现。现已归档进 overlay。
 - **修复「选工作区一闪就弹回」（真机截图复现 + 控制台定位）**：这不是工作区的问题，而是
   **任何会话都创建不了**。控制台原文：
   `session create failed: agent-preset/invalid: preset "standard" failed to mount: 2 row(s) did not activate:
