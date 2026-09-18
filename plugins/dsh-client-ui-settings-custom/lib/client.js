@@ -53,6 +53,17 @@ window.__ModuleLoader__.load({
 				props.children);
 		}
 
+		// AI 工作区一行：把三种真实状态讲清楚（未设置 / 可用 / 失效），
+		// Android 11+ 没「所有文件访问」时明确提示，避免用户以为功能坏了。
+		function workspaceDesc(s) {
+			if (!s.workspacePath) {
+				return s.allFilesAccess
+					? "未设置：AI 的文件操作在内部目录。可点「选择文件夹」指定外部目录。"
+					: "未设置：AI 的文件操作在内部目录。当前没有「所有文件访问」权限，选外部文件夹前需先授权（点「选择文件夹」会引导）。";
+			}
+			return s.workspacePath + (s.workspaceUsable ? "" : "　⚠️ 当前不可写：可能是「所有文件访问」被关闭；点「选择文件夹」会给出授权或改用默认目录的选项");
+		}
+
 		function CustomSection() {
 			const [state, setState] = react.useState(readState);
 			react.useEffect(() => {
@@ -70,7 +81,11 @@ window.__ModuleLoader__.load({
 					react.createElement("div", { style: S.seg },
 						chip("有 root", () => { call("setRunMode", "root"); call("requestRestart"); }, mode === "root"),
 						chip("无 root", () => { call("setRunMode", "noroot"); call("requestRestart"); }, mode !== "root"))),
-				react.createElement(Row, { title: "知识库", desc: (s.kbCount === undefined ? "读取中…" : ("共 " + s.kbCount + " 条")) + (s.kbDir ? (" · " + s.kbDir) : "") + "（外部存储，App 更新不会清除）" },
+				react.createElement(Row, { title: "AI 工作区", desc: workspaceDesc(s) },
+				react.createElement("div", { style: S.actions },
+					react.createElement(Button, { variant: "outline", size: "sm", onClick: () => call("openWorkspacePicker"), children: (s.workspacePath ? "更改" : "选择文件夹") }),
+					react.createElement(Button, { variant: "outline", size: "sm", onClick: () => call("useDefaultWorkspace"), children: "用默认目录" }))),
+			react.createElement(Row, { title: "知识库", desc: (s.kbCount === undefined ? "读取中…" : ("共 " + s.kbCount + " 条")) + (s.kbDir ? (" · " + s.kbDir) : "") + "（外部存储，App 更新不会清除）" },
 					react.createElement("div", { style: S.actions },
 						react.createElement(Button, { variant: "outline", size: "sm", onClick: () => call("openKnowledgeDir"), children: "打开目录" }),
 						react.createElement(Button, { variant: "outline", size: "sm", onClick: () => call("copyKnowledgePath"), children: "复制路径" }))),
