@@ -3,7 +3,7 @@
 > 内核：`@deepseek-ai/dsh@0.1.6-alpha.2`（**从 0.1.5-rc.2 升级**）
 > 产物：`DeepSeekHarness-X7Root-v1.7.5-x7root.8.apk`
 > 包名 `com.deepseek.harness`　versionCode `116`　versionName `1.7.5-x7root.8`　targetSdk `28`
-> 大小 164,832,264 字节　SHA-256 `54c033176c96916789140429c1560eacc8bae8e09d938bfc3264fa9ae70ab00a`
+> 大小 164,832,264 字节　SHA-256 `16a3da4aad20590c5b96d656f725b1b0835970f89eb07387dd3bafb17fcaa9a5`
 
 本版是**内核升级版**：把内嵌的 DSH 内核从 `0.1.5-rc.2` 换到 npm 上最新的 `0.1.6-alpha.2`，
 并把 4 个 Android 适配补丁按新内核源码**重新移植**（不是套用旧文件）。
@@ -39,6 +39,26 @@
 代价说明：**Office 文档转 PDF（`dsh-office-to-pdf`）在 Android 上不可用**（LibreOffice 无 Android/arm64 构建），
 调用时会返回 `unavailable`；Office 的读写/编辑/信息等能力不受影响。
 
+### 第三轮真机：选工作区一闪就弹回 —— 真正原因是「会话建不出来」
+
+浏览器控制台原文：
+
+```
+session create failed: agent-preset/invalid: preset "standard" failed to mount: 2 row(s) did not activate:
+  workflow-ptc … waiting for ptcRuntime
+  tool-workflow … waiting for workflowEngine
+```
+
+也就是说：**任何会话都创建不了**（点工作区会顺手建会话，建不出来就弹回，看起来像工作区坏了）。
+
+根因：Android 配置里 `sandbox` 被禁用 → 0.1.6 新加的 `ptc-runtime` 需要注入 `sandbox` 服务，拿不到就不激活
+→ standard 预设里的两个 workflow 插件挂不上 → 预设挂载失败 → 会话创建失败。
+
+修复：把 `sandbox` 改回**启用**（由 `dsh-sandbox-local` 提供）。默认权限是 `danger-full-access`，
+该模式下 ptc/bash 都不会走 `confine()`，因此不需要内核级沙箱；`bash-sandbox` 继续禁用
+（它和 `bash-local` 抢注册 `shell` 服务，同时开会直接崩）。
+
+结果：引擎启动**零告警**，工作区选中并显示对勾，界面出现输入框与模型选择，可以正常开始对话。
 ## 第二轮真机：启动提速 + 工作区修复
 
 ### 启动：20 秒 → 3.7 秒

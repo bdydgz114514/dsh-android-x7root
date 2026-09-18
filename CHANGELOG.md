@@ -3,6 +3,18 @@
 > 上游基线的变更见 @CHANGES.md@。
 
 ## 1.7.5-x7root.8 (versionCode 116) — 内核升级到 0.1.6-alpha.2
+- **修复「选工作区一闪就弹回」（真机截图复现 + 控制台定位）**：这不是工作区的问题，而是
+  **任何会话都创建不了**。控制台原文：
+  `session create failed: agent-preset/invalid: preset "standard" failed to mount: 2 row(s) did not activate:
+  workflow-ptc … waiting for ptcRuntime / tool-workflow … waiting for workflowEngine`。
+  根因：Android 配置里 `sandbox` 被禁用 → 0.1.6 的 `ptc-runtime` 注入 `sandbox`/`sandboxPolicy` 拿不到服务
+  → `ptcRuntime` 不激活 → standard 预设的 `workflow-ptc`/`tool-workflow` 挂不上 → 预设挂载失败 → 会话创建失败。
+  修复：**把 `sandbox` 改回启用**（由 `dsh-sandbox-local` 提供；默认权限是 `danger-full-access`，
+  该模式下 ptc/bash 都不会调用 `confine()`，所以不需要内核级沙箱也能跑），
+  `bash-sandbox` 保持禁用（它和 `bash-local` 抢注册 `shell` 服务会直接崩）。
+  修复后引擎启动**零 pending 告警**，工作区选中并出现对勾。
+- 构建链修一个坑：`prune-and-rebuild.sh` 之前只同步内核与 REVISION，**没有同步 dshhome 配置**，
+  导致改了 `cordis.patch.yml` 重新打包却不生效（排查时被这个误导过）。现已一并同步。
 - **启动提速（真机实测 20 秒 → 3.7 秒）**：以前**每次启动都重写 2 万+ 个内核文件**。
   根因是"完成标记缺失 → 一律全量补齐"的保守判断，叠加"内部运行时补齐"每次都要预扫整个 payload。
   改为：
